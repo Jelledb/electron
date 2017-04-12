@@ -168,7 +168,6 @@ const char kContextIsolation[] = "context-isolation";
 const char kGuestInstanceID[]  = "guest-instance-id";
 const char kOpenerID[]         = "opener-id";
 const char kScrollBounce[]     = "scroll-bounce";
-const char kHiddenPage[]       = "hidden-page";
 
 // Command switch passed to renderer process to control nodeIntegration.
 const char kNodeIntegrationInWorker[]  = "node-integration-in-worker";

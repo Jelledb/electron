@@ -300,6 +300,8 @@ class NativeWindow : public base::SupportsUserData,
   // Dispatch ReadyToShow event to observers.
   void NotifyReadyToShow();
 
+  void ShowRenderWidgetIfNeeded();
+
   // Whether window has standard frame.
   bool has_frame_;
 
@@ -318,6 +320,8 @@ class NativeWindow : public base::SupportsUserData,
 
   // The windows has been closed.
   bool is_closed_;
+
+  bool is_render_widget_view_show_pending_;
 
   // Closure that would be called when window is unresponsive when closing,
   // it should be cancelled when we can prove that the window is responsive.

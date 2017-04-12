@@ -465,9 +465,7 @@ describe('<webview> tag', function () {
             typeofArrayPush: 'number',
             typeofFunctionApply: 'boolean',
             typeofPreloadExecuteJavaScriptProperty: 'number',
-            typeofOpenedWindow: 'object',
-            documentHidden: isCI,
-            documentVisibilityState: isCI ? 'hidden' : 'visible'
+            typeofOpenedWindow: 'object'
           }
         })
         done()
@@ -1080,25 +1078,62 @@ describe('<webview> tag', function () {
     })
   })
 
-  it('inherits the parent window visibility state and receives visibilitychange events', function (done) {
-    w = new BrowserWindow({
-      show: false
+  describe('webview document.visibilityState', function () {
+    afterEach(function () {
+      ipcMain.removeAllListeners('pong')
     })
 
-    ipcMain.once('pong', function (event, visibilityState, hidden) {
-      assert.equal(visibilityState, 'hidden')
-      assert.equal(hidden, true)
+    it('inherits the parent window visibility', function (done) {
+      w = new BrowserWindow({ width: 100, height: 100 })
 
       ipcMain.once('pong', function (event, visibilityState, hidden) {
         assert.equal(visibilityState, 'visible')
         assert.equal(hidden, false)
-        done()
+
+        ipcMain.once('pong', function (event, visibilityState, hidden) {
+          assert.equal(visibilityState, 'hidden')
+          assert.equal(hidden, true)
+
+          ipcMain.once('pong', function (event, visibilityState, hidden) {
+            assert.equal(visibilityState, 'visible')
+            assert.equal(hidden, false)
+            done()
+          })
+
+          w.show()
+        })
+
+        w.hide()
       })
 
-      w.webContents.emit('-window-visibility-change', 'visible')
+      w.loadURL('file://' + fixtures + '/pages/webview-visibilitychange.html')
     })
 
-    w.loadURL('file://' + fixtures + '/pages/webview-visibilitychange.html')
+    it('hidden webview visiblity overrides parent window visiblity', function (done) {
+      w = new BrowserWindow({ width: 100, height: 100 })
+
+      ipcMain.once('pong', function (event, visibilityState, hidden) {
+        assert.equal(visibilityState, 'hidden')
+        assert.equal(hidden, true)
+
+        ipcMain.once('pong', function (event, visibilityState, hidden) {
+          assert.equal(visibilityState, 'visible')
+          assert.equal(hidden, false)
+          done()
+        })
+
+        w.webContents.executeJavaScript(`
+          const webview = document.getElementsByTagName('webview')[0].style.visibility = 'inherit'
+        `)
+      })
+
+      w.loadURL('file://' + fixtures + '/pages/webview-hidden-visibilitychange.html')
+    })
+
+    // TODO: Test that <webview> in a initially hidden BrowserWindow
+    // transitions from visible to hidden like the BrowserWindow itself. This
+    // doesn't currently work due to
+    // https://github.com/electron/electron/issues/8505
   })
 
   describe('will-attach-webview event', () => {

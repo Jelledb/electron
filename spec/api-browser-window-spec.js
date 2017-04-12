@@ -1108,6 +1108,127 @@ describe('BrowserWindow module', function () {
     })
   })
 
+  describe('document.visibilityState', function () {
+    afterEach(function () {
+      ipcMain.removeAllListeners('pong')
+    })
+
+    it('visibilityState is initially visible despite window being hidden', function (done) {
+      w.destroy()
+      w = new BrowserWindow({ show: false, width: 100, height: 100 })
+
+      let readyToShow = false
+      w.on('ready-to-show', function () {
+        readyToShow = true
+      })
+
+      ipcMain.once('pong', function (event, visibilityState, hidden) {
+        assert.ok(!readyToShow)
+        assert.equal(visibilityState, 'visible')
+        assert.equal(hidden, false)
+
+        ipcMain.once('pong', function (event, visibilityState, hidden) {
+          assert(readyToShow)
+          assert.equal(visibilityState, 'hidden')
+          assert.equal(hidden, true)
+
+          ipcMain.once('pong', function (event, visibilityState, hidden) {
+            assert.equal(visibilityState, 'visible')
+            assert.equal(hidden, false)
+            done()
+          })
+
+          w.show()
+        })
+      })
+
+      w.loadURL('file://' + path.join(fixtures, 'pages', 'visibilitychange.html'))
+    })
+
+    it('showing hidden window in ready-to-show triggers visibilitychange event', function (done) {
+      w.destroy()
+      w = new BrowserWindow({ show: false, width: 100, height: 100 })
+
+      let initialPong = false
+      ipcMain.once('pong', function (event, visibilityState, hidden) {
+        assert.ok(!initialPong)
+        initialPong = true
+        assert.equal(visibilityState, 'visible')
+        assert.equal(hidden, false)
+      })
+
+      w.on('ready-to-show', function () {
+        ipcMain.once('pong', function (event, visibilityState, hidden) {
+          assert.ok(initialPong)
+          assert.equal(visibilityState, 'visible')
+          assert.equal(hidden, false)
+          done()
+        })
+
+        w.show()
+      })
+
+      w.loadURL('file://' + path.join(fixtures, 'pages', 'visibilitychange.html'))
+    })
+
+    it('initially visible window does not trigger visibilitychange event', function (done) {
+      w.destroy()
+      w = new BrowserWindow({ show: true, width: 100, height: 100 })
+
+      ipcMain.once('pong', function (event, visibilityState, hidden) {
+        assert.equal(visibilityState, 'visible')
+        assert.equal(hidden, false)
+
+        ipcMain.once('pong', function (event, visibilityState, hidden) {
+          assert.ok(false)
+        })
+
+        setTimeout(done, 1000)
+      })
+
+      w.loadURL('file://' + path.join(fixtures, 'pages', 'visibilitychange.html'))
+    })
+
+    it('visibilityState remains visible if backgroundThrottling is disabled', function (done) {
+      w.destroy()
+      w = new BrowserWindow({
+        show: false,
+        width: 100,
+        height: 100,
+        webPreferences: {
+          backgroundThrottling: false
+        }
+      })
+
+      ipcMain.once('pong', function (event, visibilityState, hidden) {
+        assert.equal(visibilityState, 'visible')
+        assert.equal(hidden, false)
+
+        ipcMain.on('pong', function (event, visibilityState, hidden) {
+          assert.ok(false)
+        })
+
+        setTimeout(() => {
+          w.show()
+
+          setTimeout(() => {
+            w.hide()
+
+            setTimeout(() => {
+              w.show()
+
+              setTimeout(() => {
+                done()
+              }, 500)
+            }, 500)
+          }, 500)
+        }, 500)
+      })
+
+      w.loadURL('file://' + path.join(fixtures, 'pages', 'visibilitychange.html'))
+    })
+  })
+
   describe('new-window event', function () {
     if (isCI && process.platform === 'darwin') {
       return
@@ -1960,9 +2081,7 @@ describe('BrowserWindow module', function () {
         typeofArrayPush: 'number',
         typeofFunctionApply: 'boolean',
         typeofPreloadExecuteJavaScriptProperty: 'number',
-        typeofOpenedWindow: 'object',
-        documentHidden: true,
-        documentVisibilityState: 'hidden'
+        typeofOpenedWindow: 'object'
       }
     }
 

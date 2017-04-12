@@ -60,6 +60,7 @@ NativeWindow::NativeWindow(
       transparent_(false),
       enable_larger_than_screen_(false),
       is_closed_(false),
+      is_render_widget_view_show_pending_(false),
       sheet_offset_x_(0.0),
       sheet_offset_y_(0.0),
       aspect_ratio_(0.0),
@@ -485,6 +486,8 @@ void NativeWindow::NotifyWindowFocus() {
 }
 
 void NativeWindow::NotifyWindowShow() {
+  ShowRenderWidgetIfNeeded();
+
   for (NativeWindowObserver& observer : observers_)
     observer.OnWindowShow();
 }
@@ -495,6 +498,8 @@ void NativeWindow::NotifyWindowHide() {
 }
 
 void NativeWindow::NotifyWindowMaximize() {
+  ShowRenderWidgetIfNeeded();
+
   for (NativeWindowObserver& observer : observers_)
     observer.OnWindowMaximize();
 }
@@ -510,6 +515,8 @@ void NativeWindow::NotifyWindowMinimize() {
 }
 
 void NativeWindow::NotifyWindowRestore() {
+  ShowRenderWidgetIfNeeded();
+
   for (NativeWindowObserver& observer : observers_)
     observer.OnWindowRestore();
 }
@@ -683,6 +690,21 @@ void NativeWindow::NotifyWindowUnresponsive() {
 void NativeWindow::NotifyReadyToShow() {
   for (NativeWindowObserver& observer : observers_)
     observer.OnReadyToShow();
+
+  if (!IsVisible()) {
+    // Undo Show() call in DidFirstVisuallyNonEmptyPaint(). Note that this
+    // will also fire the visibilitychange event.
+    web_contents()->GetRenderWidgetHostView()->Hide();
+    is_render_widget_view_show_pending_ = true;
+  }
+}
+
+void NativeWindow::ShowRenderWidgetIfNeeded() {
+  // Undo the Hide() call in NotifyReadyToShow().
+  if (is_render_widget_view_show_pending_ && IsVisible()) {
+    is_render_widget_view_show_pending_ = false;
+    web_contents()->GetRenderWidgetHostView()->Show();
+  }
 }
 
 }  // namespace atom
